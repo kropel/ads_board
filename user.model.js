@@ -3,12 +3,6 @@ const mongoose = require("mongoose");
 module.exports = mongoose.model("users", {
   firstName: String,
   lastName: String,
-  username: { type: String, select: false },
+  username: String,
   password: { type: String, select: false },
-  ads: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "ads",
-    },
-  ],
 });
