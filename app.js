@@ -7,9 +7,11 @@ mongoose.connect(process.env.MONGODB_CONNETION, {
   useUnifiedTopology: true,
 });
 
-const Category = require("./category.model");
-const User = require("./user.model");
-const Ad = require("./ad.model");
+const MODELS = {
+  categories: require("./category.model"),
+  users: require("./user.model"),
+  ads: require("./ad.model"),
+};
 
 const routerUsers = require("./routerUsers");
 const routerCategories = require("./routerCategories");
@@ -19,9 +21,31 @@ const app = express();
 
 app.use(express.json());
 
-app.use("/users", routerUsers);
-app.use("/categories", routerCategories);
-app.use("/ads", routerAds);
+// app.use("/users", routerUsers);
+// app.use("/categories", routerCategories);
+// app.use("/ads", routerAds);
+app.get("/:path?/:selector?", async (req, res) => {
+  const { path, selector } = req.params;
+  if (selector) {
+    const model = MODELS[path];
+    const response = await model.find;
+  } else if (path) {
+    try {
+      const model = MODELS[path];
+      const response = await model
+        .find()
+        .populate("categories", "-__v -_id -subCategories -parentCategory")
+        .populate("author", "-__v")
+        .populate("subCategories", "-__v -_id -subCategories -parentCategory")
+        .populate("parentCategory", "-__v -_id -subCategories -parentCategory")
+        .select("-__v");
+      res.send(await JSON.stringify(response));
+    } catch (error) {
+      console.log(error);
+      res.send(`Wystąpił błąd ${error}`);
+    }
+  }
+});
 
 app.listen(4000, () => {
   console.log(
