@@ -3,7 +3,71 @@ const router = express.Router();
 const adModel = require("./ad.model");
 const userModel = require("./user.model");
 const categoryModel = require("./category.model");
-const { response } = require("express");
+const mongoose = require("mongoose");
+let error = null;
+
+/**
+ * wyszukiwanie
+ *
+ * @method get
+ */
+router.get("/find", async (req, res, next) => {
+  const { query } = req;
+  console.log(query);
+  if (Object.keys(query).length !== 0) {
+    const [key] = Object.keys(query);
+    let value,
+      selector,
+      val = "";
+
+    switch (key) {
+      case "_id":
+        value = mongoose.Types.ObjectId(query[key]);
+        break;
+      case "price":
+      case "amount":
+        value = Number(query[key]);
+        break;
+      case "dateAdded":
+        value = new Date(query[key]);
+        break;
+      case "author":
+        [selector, val] = query[key].split(":");
+        value = await userModel.findOne({ [selector]: val });
+        break;
+      case "categories":
+        [selector, val] = query[key].split(":");
+        value = await categoryModel.findOne({ [selector]: val });
+        break;
+      default:
+        value = new RegExp(query[key], "igm");
+        break;
+    }
+
+    await adModel
+      .find({ [key]: value })
+      .populate("author", "-_id -__v")
+      .populate("categories", "-subCategories -parentCategory -_id -__v")
+      .select("-__v")
+      .exec((error, response) => {
+        if (error) {
+          next(error);
+        } else {
+          if (response.length !== 0) {
+            res.send(response);
+          } else {
+            error = new Error("Resource not found");
+            error.code = 404;
+            next(error);
+          }
+        }
+      });
+  } else {
+    error = new Error("Invalid query");
+    error.code = 400;
+    next(error);
+  }
+});
 
 /**
  * Pobieranie wszystkich ogłoszeń
@@ -13,7 +77,6 @@ const { response } = require("express");
  * @method get
  */
 router.get("/", async (req, res) => {
-  console.log(req.query);
   const ads = await adModel
     .find(req.query)
     .populate("author", "-_id -__v")
@@ -94,30 +157,22 @@ router.post("/", async (req, res, next) => {
  */
 router.put("/:id", async (req, res, next) => {
   if (!req.userAuthorisation) {
-    const error = new Error("No user authorisation");
+    error = new Error("No user authorisation");
     error.code = 401;
     next(error);
   } else {
     const { id } = req.params;
-    const ad = await adModel.findByIdAndUpdate(
-      id,
-      req.body,
-      (error, response) => {
-        try {
-          if (error) {
-            throw error;
-          } else {
-            if (response) {
-              res.status(200).send(response);
-            } else {
-              res.status(204).send();
-            }
-          }
-        } catch (error) {
-          next(error);
+    await adModel.findByIdAndUpdate(id, req.body, (error, response) => {
+      if (error) {
+        next(error);
+      } else {
+        if (response) {
+          res.status(200).send(response);
+        } else {
+          res.status(204).send();
         }
       }
-    );
+    });
   }
 });
 

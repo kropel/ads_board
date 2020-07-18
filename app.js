@@ -41,7 +41,7 @@ app.use((error, req, res, next) => {
 app.listen(4000, () => {
   console.log(
     `Server start on port 4000
-    http://localhost:4000
+    
     http://localhost:4000/users
     http://localhost:4000/categories
     http://localhost:4000/ads`
