@@ -184,21 +184,27 @@ router.put("/:id", async (req, res, next) => {
  * http://localhost:4000/ads/5f1185e31edd5a4b31a2fad0
  */
 router.delete("/:id", async (req, res, next) => {
-  const { id } = req.params;
-  try {
-    await adModel.findByIdAndDelete(id, (error, response) => {
-      if (error) {
-        throw error;
-      } else {
-        if (response) {
-          res.status(200).send(response);
-        } else {
-          res.status(204).send();
-        }
-      }
-    });
-  } catch (error) {
+  if (!req.userAuthorisation) {
+    error = new Error("No user authorisation");
+    error.code = 401;
     next(error);
+  } else {
+    const { id } = req.params;
+    try {
+      await adModel.findByIdAndDelete(id, (error, response) => {
+        if (error) {
+          throw error;
+        } else {
+          if (response) {
+            res.status(200).send(response);
+          } else {
+            res.status(204).send();
+          }
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 });
 
